@@ -1,0 +1,4 @@
+This location contains only tagged releases of traccoon
+
+For the latest development state use the Subversion repository at
+svn://svn.services.cbcdn.com/traccoon
