@@ -360,3 +360,67 @@ int updatePeer(sqlite3* db, int torrentid, ANNOUNCE_REQUEST* ar){
 	
 	return error;
 }
+
+
+int createEmptyDatabase(char* filename){
+	sqlite3* dbHandle;
+	int error;
+	char* errmsg=NULL;
+	
+	NOTICE_LO(printf("Initializing minimal database structure in file %s\n",filename));
+	
+	error=sqlite3_open_v2(filename,&dbHandle,SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE,NULL);
+	if(error==SQLITE_OK){
+		DEBUG(printf("Acquired database handle\n"));
+		
+		NOTICE_LO(printf("Creating torrent info table... "));
+		error=sqlite3_exec(dbHandle,CREATE_TORRENT_TABLE,NULL,NULL,&errmsg);
+		if(error!=SQLITE_OK){
+			ERROR(printf("\nSQLite reported failure (%s)\n",sqlite3_errmsg(dbHandle)));
+			if(errmsg){
+				ERROR(printf("Error message: %s\n",errmsg));
+				sqlite3_free(errmsg);
+			}
+			return DB_ERROR; //FIXME try to close db here before exiting
+		}
+		else{
+			NOTICE_LO(printf("OK\n"));
+		}
+		if(errmsg){
+			ERROR(printf("Error message: %s\n",errmsg));
+			sqlite3_free(errmsg);
+		}
+
+
+		NOTICE_LO(printf("Creating peer data table... "));
+		error=sqlite3_exec(dbHandle,CREATE_PEERS_TABLE,NULL,NULL,&errmsg);
+		if(error!=SQLITE_OK){
+			ERROR(printf("\nSQLite reported failure (%s)\n",sqlite3_errmsg(dbHandle)));
+			if(errmsg){
+				ERROR(printf("Error message: %s\n",errmsg));
+				sqlite3_free(errmsg);
+			}
+			return DB_ERROR; //FIXME try to close the database before exiting
+		}
+		else{
+			NOTICE_LO(printf("OK\n"));
+		}
+		if(errmsg){
+			ERROR(printf("Error message: %s\n",errmsg));
+			sqlite3_free(errmsg);
+		}
+	}
+	else{
+		ERROR(printf("Failed to open database: %s\n",sqlite3_errmsg(dbHandle)));
+		return DB_ERROR;
+	}
+	
+	error=sqlite3_close(dbHandle);
+	if(error==SQLITE_OK){
+		DEBUG(printf("Successfully shut down SQLite instance\n"));
+	}
+	else{
+		ERROR(printf("Failed to shut down SQLite instance\n"));
+	}
+	return error==SQLITE_OK?0:DB_ERROR;
+}

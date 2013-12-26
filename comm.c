@@ -25,7 +25,7 @@ bool parseSocket(_CLIENT* client, sqlite3* db, int announceInterval){
 				socklen=sizeof(struct sockaddr_storage);
 				if(getpeername(client->socket,(struct sockaddr*)&conn,&socklen)!=-1){
 					//check mandatory arguments
-					c=charIndex(buffer,' ');
+					c=charIndex((unsigned char*)buffer,' ');
 					if(c!=-1){
 						buffer[c]=0;//terminate buffer after request string
 						char* hash=textAfter(buffer,"info_hash=");
@@ -102,21 +102,21 @@ bool parseSocket(_CLIENT* client, sqlite3* db, int announceInterval){
 							else{
 								//vital parameters out of bounds
 								if(client->recv_iter>=MAX_RECV_ITER){
-									sendHttpHeaders(client->socket,"400 Bad Syntax","X-Failure-Reason: Failed Parameter Validation\n");
+									sendHttpHeaders(client->socket,"400 Bad Syntax","X-Failure-Reason: Failed Parameter Validation\r\n");
 								}
 							}
 						}
 						else{
 							//request is missing vital data
 							if(client->recv_iter>=MAX_RECV_ITER){
-								sendHttpHeaders(client->socket,"408 Timed out","X-Failure-Reason: Missing parameters\n");
+								sendHttpHeaders(client->socket,"408 Timed out","X-Failure-Reason: Missing parameters\r\n");
 							}
 						}
 					}
 					else{
 						//request was not properly terminated
 						if(client->recv_iter>=MAX_RECV_ITER){
-							sendHttpHeaders(client->socket,"400 Bad Syntax","X-Failure-Reason: Thats just plain wrong\n");
+							sendHttpHeaders(client->socket,"400 Bad Syntax","X-Failure-Reason: Thats just plain wrong\r\n");
 						}
 					}
 				}
@@ -128,7 +128,7 @@ bool parseSocket(_CLIENT* client, sqlite3* db, int announceInterval){
 			else if(!strncmp(buffer, "scrape", 6)){
 				buffer+=6;
 				//scrape request
-				c=charIndex(buffer, ' ');
+				c=charIndex((unsigned char*)buffer, ' ');
 				if(c!=-1){
 					buffer[c]=0;
 					char* hash=textAfter(buffer,"info_hash=");
@@ -140,9 +140,11 @@ bool parseSocket(_CLIENT* client, sqlite3* db, int announceInterval){
 						//get hash
 						int hash_len=httpParamLength(hash);
 						if(decodedStrlen(hash,hash_len)==MAX_HASH_LEN){
-							char hashbuf[MAX_ENC_HASH_LEN];
-							strncpy(hashbuf,hash,hash_len);
-							destructiveURLEncodeFixup(hashbuf,MAX_ENC_HASH_LEN);
+							unsigned char hashbuf[MAX_URLENC_HASH_LEN+1];
+							memcpy(hashbuf,hash,hash_len);
+							hashbuf[hash_len]=0;
+							destructiveURLDecode(hashbuf);
+							hashEncodeHex(hashbuf,(sizeof(hashbuf)/sizeof(unsigned char))-1);
 							scrape(client->socket, db, hashbuf);
 							handled=true;
 						}
@@ -151,7 +153,7 @@ bool parseSocket(_CLIENT* client, sqlite3* db, int announceInterval){
 				else{
 					//request was not properly terminated
 					if(client->recv_iter>=MAX_RECV_ITER){
-						sendHttpHeaders(client->socket,"400 Bad Syntax","X-Failure-Reason: Thats just plain wrong\n");
+						sendHttpHeaders(client->socket,"400 Bad Syntax","X-Failure-Reason: Thats just plain wrong\r\n");
 					}
 				}
 			}
@@ -159,7 +161,7 @@ bool parseSocket(_CLIENT* client, sqlite3* db, int announceInterval){
 				//some other http
 				sendHttpHeaders(client->socket,"200 OK",STANDARD_HEADER);
 				for(c=0;c<10;c++){
-					sendString(client->socket,"Making Milhouse cry is not a science project\n");
+					sendString(client->socket,"Making Milhouse cry is not a science project\r\n");
 				}
 				handled=true;
 			}

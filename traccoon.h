@@ -1,4 +1,4 @@
-#define _VERSION "0.3 \"insensitive idiot\""
+#define _VERSION "0.5 \"obviously ordered\""
 
 #define DB_ERROR 9001
 #define MEM_ERROR 9002
@@ -13,7 +13,7 @@
 #define MAXPEERS_SENT 50
 #define MAX_RECV_ITER 200
 
-#define STANDARD_HEADER "X-LOLz-Had: much\n"
+#define STANDARD_HEADER "X-LOLz-Had: much\r\n"
 
 #define OFF(a)
 #define ON(a) (a)
@@ -61,8 +61,8 @@ typedef enum /*BT_EVENT*/{
 
 typedef struct /*_ANNOUNCE_PARAMS*/{
 	/*required data for db*/
-	char info_hash[MAX_ENC_HASH_LEN];	//torrent hash
-	char peer_id[MAX_ENC_HASH_LEN];	//peerid
+	char info_hash[MAX_URLENC_HASH_LEN+1];	//torrent hash
+	char peer_id[MAX_URLENC_HASH_LEN+1];	//peerid
 	char ip[INET6_ADDRSTRLEN];
 	int port;			//port
 	int protover;

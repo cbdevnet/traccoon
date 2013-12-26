@@ -1,7 +1,11 @@
 buffered output for content-length header
 make use of -i flag
 implenet v6
-hash encoding shpuld prolly be case sensitive
 test completion counting
 
 test scraping
+create sqlite vms at thread start
+
+implement getpeers
+implement maketorrent
+implement web panel

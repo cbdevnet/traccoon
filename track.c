@@ -1,7 +1,7 @@
 void track(int socket, sqlite3* db, ANNOUNCE_REQUEST* ar, int interval){
 	sqlite3_stmt* queryPeers;
-	int error, torrentid, i, c, pos4, port, pos6, proto;
-	int16_t bePort;
+	int error, torrentid, i, c, pos4, port, pos6, proto, hashlen;
+	uint16_t bePort;
 	char buf[1024];
 	unsigned char buf4[1024];
 	unsigned char buf6[1024];
@@ -13,8 +13,12 @@ void track(int socket, sqlite3* db, ANNOUNCE_REQUEST* ar, int interval){
 	
 	//prepare data
 	strtolower(ar->ip);
-	strtolower(ar->info_hash);
-	destructiveURLEncodeFixup(ar->info_hash,MAX_ENC_HASH_LEN);
+	hashlen=destructiveURLDecode((unsigned char*)ar->info_hash);
+	if(hashlen!=MAX_HASH_LEN){
+		ERROR(printf("Supplied hash has unsupported length!\n"));
+		//FIXME handle error
+	}
+	hashEncodeHex((unsigned char*)ar->info_hash,MAX_URLENC_HASH_LEN);
 	
 	sendHttpHeaders(socket,"200 OK",STANDARD_HEADER);
 	
@@ -29,6 +33,7 @@ void track(int socket, sqlite3* db, ANNOUNCE_REQUEST* ar, int interval){
 			return;
 	}
 	
+	DEBUG(printf("Queried hash is %s\n",ar->info_hash));
 	NOTICE_LO(printf("%s:%d requested %d %s peers for %d\n",ar->ip,ar->port,ar->numwant,(ar->compact)?"compact":"non-compact",torrentid));
 	
 	//get peers
@@ -113,12 +118,12 @@ void track(int socket, sqlite3* db, ANNOUNCE_REQUEST* ar, int interval){
 							continue;
 						}
 						//copy into buffer
-						memcpy(buf4+pos4,&(sin.sin_addr),sizeof(sin.sin_addr));
+						memcpy(buf4+pos4,&(sin.sin_addr),sizeof(sin.sin_addr)); //FIXME assert sizeof sin.sin_addr
 						pos4+=sizeof(sin.sin_addr);
 						//add port
-						bePort=htons(port);//FIXME TODO this might be wrong
-						memcpy(buf4+pos4,&bePort,sizeof(int16_t));
-						pos4+=sizeof(int16_t);
+						bePort=htons(port);
+						memcpy(buf4+pos4,&bePort,sizeof(uint16_t));
+						pos4+=sizeof(uint16_t);
 					}
 					else{
 						//TODO test this whole branch
@@ -162,13 +167,13 @@ void track(int socket, sqlite3* db, ANNOUNCE_REQUEST* ar, int interval){
 	updatePeer(db,torrentid,ar);
 }
 
-void scrape(int socket, sqlite3* db, char* hash){
+void scrape(int socket, sqlite3* db,unsigned char* hash){
 	char buf[512];
 	int torrent;
 	if(hash){
 		sendHttpHeaders(socket,"200 OK",STANDARD_HEADER);
 		
-		torrent=getTorrentId(db,hash);
+		torrent=getTorrentId(db,(char*)hash);
 		switch(torrent){
 			case DB_NOSUCHHASH:
 				sendString(socket,"d14:failure reason19:Hash not recognizede");
@@ -180,7 +185,7 @@ void scrape(int socket, sqlite3* db, char* hash){
 
 		NOTICE_LO(printf("Scraping for torrent %d\n",torrent));
 
-		snprintf(buf,sizeof(buf)-1,"d5:files%d:%sd8:completei%de10:downloadedi%de10:incompletei%deee",strlen(hash),hash,queryTorrentParam(db,GET_SEED_COUNT,torrent),queryTorrentParam(db,GET_COMPLETION_COUNT,torrent),queryTorrentParam(db,GET_PEERS_COUNT,torrent));
+		snprintf(buf,sizeof(buf)-1,"d5:files%d:%sd8:completei%de10:downloadedi%de10:incompletei%deee",strlen((char*)hash),hash,queryTorrentParam(db,GET_SEED_COUNT,torrent),queryTorrentParam(db,GET_COMPLETION_COUNT,torrent),queryTorrentParam(db,GET_PEERS_COUNT,torrent));
 		sendString(socket,buf);
 	}
 	else{

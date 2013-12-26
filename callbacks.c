@@ -22,5 +22,6 @@ int dumpDataCallback(void* param, int argc, char **argv, char **column){
 void sigint_handler(int param){
 	printf("Received SIGINT, setting shutdown flag\n");
 	GLOBALSTATE.killserver=true;
+	//shutdown(GLOBALSTATE.servsock,0); //FIXME work this in 
 	close(GLOBALSTATE.servsock);
 }

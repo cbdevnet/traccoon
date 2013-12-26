@@ -17,21 +17,22 @@
 #include "sqlite3.h"
 
 #include "neth.h"
+#include "encoding.h"
 #include "traccoon.h"
 #include "statements.h"
 
+#include "encoding.c"
 #include "neth.c"
 #include "db.c"
 #include "callbacks.c"
 #include "track.c"
 #include "comm.c"
-//#include "workerthread.c"
 #include "thread.c"
 
 int usage(char* name){
 	printf("Hot diggidy, you forgot to specify some options!\n");
 	printf("%s -f <dbfile>\t\tSet sqlite3 database file to use for storage (Default: tracker.db3)\n",name);
-	printf("%s -c <dbfile>\t\tInitialize empty database in file\n",name);
+	printf("%s -c <dbfile>\t\tInitialize new database in <dbfile> and exit\n",name);
 	printf("%s -w <num>\t\tNumber of worker threads for handling connections (Default: 10)\n",name);
 	printf("%s -b <host|addr>\tHost to bind server on (Default: 0.0.0.0)\n",name);
 	printf("%s -i (4|6)\t\tForce IPv4/6 (Default: any)\n",name);
@@ -85,7 +86,7 @@ int main(int argc,char* argv[]){
 				printf("Using database file %s\n",trackerDatabaseFile);
 				break;
 			case 'c':
-				//exit(createEmptyDatabase(argv[i+1])); TODO
+				exit(createEmptyDatabase(argv[i+1]));
 				break;
 			case 'w':
 				workerthreads=strtoul(argv[i+1],NULL,10);
@@ -136,7 +137,7 @@ int main(int argc,char* argv[]){
 	
 	//client handling process
 	printf("Opening database at %s\n",trackerDatabaseFile);
-	error=sqlite3_open_v2(trackerDatabaseFile,&databaseHandle,SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE,NULL);
+	error=sqlite3_open_v2(trackerDatabaseFile,&databaseHandle,SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE,NULL);//FIXME this should fail if the dbfile does not exist
 	if(error==SQLITE_OK){
 		sqlite3_busy_timeout(databaseHandle,500);//todo error handling
 		error=sqlite3_exec(databaseHandle,QUERY_TORRENT_COUNT,statusMessageCallback,(void*)CB_TORRENT_COUNT,&errstr);
@@ -238,7 +239,7 @@ int main(int argc,char* argv[]){
 										
 										//check if its time for pruning
 										if(timeNow.tv_sec-timeLast.tv_sec>=(3*announceInterval)){
-											NOTICE_LO(printf("Pruning peers (delta: %d)\n",timeNow.tv_sec-timeLast.tv_sec));
+											NOTICE_LO(printf("Pruning peers (delta: %d)\n",(int)(timeNow.tv_sec-timeLast.tv_sec)));
 											timeLast=timeNow;
 											prunePeers(databaseHandle,3*announceInterval);
 										}
@@ -307,6 +308,8 @@ int main(int argc,char* argv[]){
 			close(aqueue[i].socket);
 		}
 	}
+	
+	//close(GLOBALSTATE.servsock);
 	
 	printf("Closing main thread db handle\n");
 	if(sqlite3_close(databaseHandle)!=SQLITE_OK){

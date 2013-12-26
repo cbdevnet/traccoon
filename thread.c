@@ -139,7 +139,7 @@ void* workerthread(void* param){
 					}
 					if(!handled&&clients[i].recv_iter>MAX_RECV_ITER){
 						OFF(printf("Timed out after %d iterations\n",clients[i].recv_iter));
-						sendHttpHeaders(clients[i].socket,"408 Timed Out","X-Failure-Reason: Youre doing it wrong\n");
+						sendHttpHeaders(clients[i].socket,"408 Timed Out","X-Failure-Reason: Youre doing it wrong\r\n");
 						handled=true;
 					}
 					if(handled){
@@ -153,7 +153,7 @@ void* workerthread(void* param){
 		else{
 			//we do not have any active clients to be selected
 			SPAM(printf("Idling\n"));
-			usleep(20000);
+			usleep(20000);//FIXME isnt this a bit long?
 		}
 	}
 	
