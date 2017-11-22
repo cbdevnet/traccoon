@@ -1,7 +1,7 @@
 .PHONY: all gcc gcc-rel gcc-strict debug debug-full
 
 all:
-	cc -Wall traccoon.c -lsqlite3 -o traccoon
+	cc -Wall traccoon.c -lsqlite3 -lpthread -o traccoon
 	
 gcc:
 	gcc -Wall traccoon.c -g -lsqlite3 -o traccoon
